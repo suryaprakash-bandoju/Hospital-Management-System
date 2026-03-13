@@ -9,22 +9,6 @@ An enterprise-grade, decoupled backend system for hospital appointment schedulin
 * **Google OAuth 2.0 Integration:** Securely handles user authentication state and tokens to automatically generate and attach Google Calendar meeting invites to both doctors and patients upon confirmed bookings.
 * **Role-Based Access Control:** Custom user models ensuring strict permissions between Doctor and Patient endpoints.
 
-## 📸 System Architecture & Proof of Execution
-
-*(Drag and drop your screenshots right below these headers! GitHub will automatically format them).*
-
-### 1. The Automated API Booking & Microservice Trigger
-> **[Drop your VS Code Terminal Screenshot/GIF here]**
-> *Demonstrating the REST API payload triggering the database lock and firing the payload to the Serverless Node.js endpoint.*
-
-### 2. Automated Google Calendar Sync
-> **[Drop your Google Calendar Screenshot here]**
-> *The resulting Google Meet invite automatically pushed to the user's schedule via OAuth tokens.*
-
-### 3. Asynchronous Email Delivery
-> **[Drop your Gmail Inbox Screenshot here]**
-> *The booking confirmation email successfully processed and delivered by the decoupled Serverless microservice.*
-
 ## 💻 Tech Stack
 * **Core Backend:** Python, Django, PostgreSQL
 * **Microservice:** Node.js, Serverless Framework
