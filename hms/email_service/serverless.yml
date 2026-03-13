@@ -1,0 +1,118 @@
+# serverless.yml
+# Mini Hospital Management System – Email Notification Microservice
+# ============================================================
+# Serverless Framework configuration for the email Lambda function.
+#
+# Local development:
+#   npm install -g serverless
+#   npm install --save-dev serverless-offline
+#   serverless offline start
+#   → Lambda available at http://localhost:3000/send-email
+#
+# Deploy to AWS:
+#   serverless deploy --stage prod
+# ============================================================
+
+service: hospital-email-service
+
+# ── Framework version guard ────────────────────────────────────────────────
+frameworkVersion: ">=3.0.0"
+
+# ── Provider ───────────────────────────────────────────────────────────────
+provider:
+  name:    aws
+  runtime: python3.11          # Match your local Python version
+  stage:   ${opt:stage, 'dev'}
+  region:  ${opt:region, 'us-east-1'}
+
+  # Function-level memory & timeout defaults
+  memorySize: 256   # MB  – email sending is lightweight
+  timeout:    10    # seconds
+
+  # IAM Role permissions for the Lambda execution role
+  iam:
+    role:
+      statements:
+        # Allow Lambda to write logs to CloudWatch
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "arn:aws:logs:*:*:*"
+
+  # ── Environment Variables ──────────────────────────────────────────────
+  # For local development, values are read from .env (via dotenv plugin or
+  # useDotenv: true). For production, use AWS SSM Parameter Store or Secrets
+  # Manager and reference them as ${ssm:/hospital/smtp_user} etc.
+  environment:
+    SMTP_HOST:         ${env:SMTP_HOST,         'smtp.gmail.com'}
+    SMTP_PORT:         ${env:SMTP_PORT,         '587'}
+    SMTP_USER:         ${env:SMTP_USER,         ''}      # Set via .env locally
+    SMTP_APP_PASSWORD: ${env:SMTP_APP_PASSWORD, ''}      # NEVER commit real values
+    EMAIL_FROM_NAME:   ${env:EMAIL_FROM_NAME,   'City Hospital'}
+    STAGE:             ${self:provider.stage}
+
+# ── Package settings ───────────────────────────────────────────────────────
+package:
+  individually: false
+  # Exclude dev/test files from the deployment package
+  patterns:
+    - "!node_modules/**"
+    - "!.env"
+    - "!.env.*"
+    - "!tests/**"
+    - "!*.md"
+    - "!requirements-dev.txt"
+    - "handler.py"
+
+# ── Functions ──────────────────────────────────────────────────────────────
+functions:
+
+  sendEmail:
+    handler: handler.send_email    # file.function_name
+    description: >
+      Accepts a JSON payload specifying an email type and recipient, then
+      sends a transactional email via Gmail SMTP.
+    events:
+      - http:
+          path:   send-email       # → POST http://localhost:3000/send-email
+          method: post
+          cors:
+            origin: "*"            # Restrict to your Django domain in production
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
+          # Optional: require an API key for production security
+          # private: true
+
+    # Function-specific overrides (optional)
+    memorySize: 256
+    timeout:    10
+
+    # Dead Letter Queue – capture failed invocations (production only)
+    # onError: arn:aws:sqs:us-east-1:123456789:hospital-dlq
+
+# ── Plugins ────────────────────────────────────────────────────────────────
+plugins:
+  - serverless-offline          # Emulates API Gateway + Lambda locally
+
+# ── Plugin Configuration ───────────────────────────────────────────────────
+custom:
+  serverless-offline:
+    host:       localhost
+    httpPort:   3000            # Django will POST to http://localhost:3000/send-email
+    noPrependStageInUrl: true   # Removes /dev prefix → /send-email instead of /dev/send-email
+    noAuth:     true            # Disable auth checks locally
+    printOutput: true           # Print Lambda logs to terminal
+
+# ── Resources (optional CloudFormation extras) ─────────────────────────────
+# Uncomment to create a Dead Letter Queue in AWS:
+# resources:
+#   Resources:
+#     EmailDLQ:
+#       Type: AWS::SQS::Queue
+#       Properties:
+#         QueueName: hospital-email-dlq-${self:provider.stage}
+#         MessageRetentionPeriod: 1209600   # 14 days
